@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Ticket Management Dashboard</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+<h2>Ticket Management Dashboard</h2>
+<p id="welcomeManager">Welcome,<span th:text="${userEmail}"></span>!</p>
+<hr>
+
+<div id="dashboardOptions">
+    <button id="logoutBtn">Logout</button>
+</div>
+
+<hr>
+
+<!-- All Tickets Table -->
+<div id="allTicketsDiv">
+    <h3>All Tickets</h3>
+    <table border="1" id="ticketsTable" style="width:100%; text-align:left;">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Priority</th>
+                <th>Category</th>
+                <th>Status</th>
+                <th>Created By</th>
+                <th>Created Date</th>
+                <th>Attachment</th>
+                <th>Assigned To</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<!-- Assign Modal -->
+<div id="assignModal" style="display:none; position:fixed; top:20%; left:35%; background:#fff; border:1px solid #ccc; padding:20px; z-index:9999;">
+    <h3>Assign Ticket</h3>
+    <p>Enter Assignee Email:</p>
+    <input type="email" id="assigneeEmail" placeholder="user@example.com" />
+    <p>Comment:</p>
+    <textarea id="assignComment" rows="3" cols="30" placeholder="Add comment..."></textarea>
+    <br/><br/>
+    <button id="confirmAssign">Assign</button>
+    <button id="cancelAssign">Cancel</button>
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const loggedInManagerEmail = /*[[${userEmail}]]*/ 'manager@example.com';
+    /*]]>*/
+</script>
+
+<script>
+$(document).ready(function() {
+    
+
+    let currentTicketId = null;
+
+    // 🔄 Refresh
+    $("#refreshTickets").click(loadTickets);
+    $("#logoutBtn").click(() => window.location.href = "/logout");
+
+    //  Load tickets
+    function loadTickets() {
+        $.ajax({
+            url: "http://localhost:8080/tickets",
+            type: "GET",
+            success: function(data) {
+                let tbody = $("#ticketsTable tbody");
+                tbody.empty();
+
+                if (!data || data.length === 0) {
+                    tbody.append(`<tr><td colspan="11" style="text-align:center;">No tickets found</td></tr>`);
+                    return;
+                }
+
+                data.forEach(ticket => {
+                    const attachmentLink = ticket.fileAttachmentPath
+                        ? `<a href="http://localhost:8080/tickets/files/${ticket.fileAttachmentPath}" target="_blank">View</a>`
+                        : 'None';
+
+                    tbody.append(`
+                        <tr>
+                            <td>${ticket.id}</td>
+                            <td>${ticket.title}</td>
+                            <td>${ticket.description}</td>
+                            <td>${ticket.priority}</td>
+                            <td>${ticket.category}</td>
+                            <td>${ticket.status}</td>
+                            <td>${ticket.createdBy ? ticket.createdBy.email : ''}</td>
+                            <td>${new Date(ticket.creationDate).toLocaleString()}</td>
+                            <td>${attachmentLink}</td>
+                            <td>${ticket.assignedTo ? ticket.assignedTo.email : '—'}</td>
+                            <td>
+                                <button class="approveBtn" data-id="${ticket.id}">Approve</button>
+                                <button class="rejectBtn" data-id="${ticket.id}"> Reject</button>
+                                <button class="assignBtn" data-id="${ticket.id}"> Assign</button>
+                                <button class="commentBtn" data-id="${ticket.id}"> Add Comment</button>
+                                <button class="viewHistoryBtn" data-id="${ticket.id}"> History</button>
+                            </td>
+                        </tr>
+                    `);
+                });
+            },
+            error: function() {
+                alert("Error loading tickets.");
+            }
+        });
+    }
+
+    loadTickets();
+
+    //  Approve
+    $(document).on("click", ".approveBtn", function() {
+        const id = $(this).data("id");
+        const comment = prompt("Enter comment for approval:");
+        if (comment === null) return;
+        $.post(`http://localhost:8080/tickets/${id}/approve`, { approved: true, comments: comment })
+            .done(() => { alert("Ticket approved!"); loadTickets(); })
+            .fail(() => alert("Error approving ticket."));
+    });
+
+    //  Reject
+    $(document).on("click", ".rejectBtn", function() {
+        const id = $(this).data("id");
+        const comment = prompt("Enter comment for rejection:");
+        if (comment === null) return;
+        $.post(`http://localhost:8080/tickets/${id}/approve`, { approved: false, comments: comment })
+            .done(() => { alert("Ticket rejected!"); loadTickets(); })
+            .fail(() => alert("Error rejecting ticket."));
+    });
+
+    //  Assign
+    $(document).on("click", ".assignBtn", function() {
+        currentTicketId = $(this).data("id");
+        $("#assignModal").show();
+    });
+
+    $("#confirmAssign").click(function() {
+        const email = $("#assigneeEmail").val();
+        const comment = $("#assignComment").val();
+        if (!email) {
+            alert("Please enter an email.");
+            return;
+        }
+        $.post(`http://localhost:8080/tickets/${currentTicketId}/assign`, { assigneeEmail: email, comments: comment })
+            .done(() => {
+                alert("Ticket assigned successfully!");
+                $("#assignModal").hide();
+                $("#assigneeEmail").val('');
+                $("#assignComment").val('');
+                loadTickets();
+            })
+            .fail(() => alert("Error assigning ticket."));
+    });
+
+    $("#cancelAssign").click(() => { 
+        $("#assignModal").hide(); 
+        $("#assigneeEmail").val(''); 
+        $("#assignComment").val(''); 
+    });
+
+    //  Add Comment (independent)
+    $(document).on("click", ".commentBtn", function() {
+        const id = $(this).data("id");
+        const comment = prompt("Enter your comment:");
+        if (!comment) return;
+        $.post(`http://localhost:8080/tickets/${id}/comment`, { comments: comment })
+            .done(() => { alert("Comment added!"); })
+            .fail(() => alert("Error adding comment."));
+    });
+
+    //  View History
+    $(document).on("click", ".viewHistoryBtn", function() {
+        const ticketId = $(this).data("id");
+        $.get(`http://localhost:8080/ticket-history/${ticketId}`)
+            .done(function(history) {
+                if (!history || history.length === 0) {
+                    alert("No history found for this ticket.");
+                    return;
+                }
+                let html = `<h3>History for Ticket #${ticketId}</h3>
+                    <table border="1" style="width:100%; text-align:left;">
+                        <thead><tr><th>Action</th><th>Date</th><th>Updated By</th><th>Comments</th></tr></thead>
+                        <tbody>`;
+                history.forEach(h => {
+                    html += `<tr>
+                        <td>${h.action}</td>
+                        <td>${new Date(h.actionDate).toLocaleString()}</td>
+                        <td>${h.actionBy ? h.actionBy.email : ''}</td>
+                        <td>${h.comments || ''}</td>
+                    </tr>`;
+                });
+                html += `</tbody></table><br><button id="closeHistory">Close</button>`;
+                $("body").append(`<div id="historyModal" style="position:fixed; top:10%; left:10%; background:#fff; border:1px solid #ccc; padding:20px; width:80%; height:70%; overflow:auto; z-index:9999;">${html}</div>`);
+            })
+            .fail(() => alert("Error loading history."));
+    });
+
+    $(document).on("click", "#closeHistory", () => $("#historyModal").remove());
+});
+</script>
+</body>
+</html>

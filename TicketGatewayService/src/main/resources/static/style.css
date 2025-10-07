@@ -1,0 +1,109 @@
+/* --- Coffee Theme Palette ---
+   * Dark Espresso Brown (Primary): #4F382E
+   * Creamy Latte (Background/Text): #F7F3E3
+   * Warm Caramel/Tan (Accent): #C69A73
+   * Rich Mocha (Text/Details): #6F4E37
+---------------------------- */
+
+/* Global Body Styling */
+body {
+    /* Set a clean, readable font */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* Creamy latte color for the background */
+    background-color: #F7F3E3;
+    /* Center the login form in the viewport */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+/* Login Form Container */
+/* The HTML uses the <form> tag as the container */
+form {
+    /* Dark espresso brown for a strong, professional look */
+    background-color: #4F382E;
+    padding: 40px;
+    border-radius: 10px;
+    /* Subtle shadow for depth */
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    width: 380px;
+    max-width: 90%;
+    /* Optional subtle accent border */
+    border: 1px solid #C69A73;
+}
+
+/* Header */
+h2 {
+    /* Warm caramel color for high contrast */
+    color: #C69A73;
+    text-align: center;
+    margin-bottom: 25px;
+    font-weight: 600;
+    font-size: 1.8em;
+    letter-spacing: 1px;
+    /* Subtle separator line */
+    border-bottom: 2px solid #6F4E37;
+    padding-bottom: 10px;
+}
+
+/* Labels */
+label {
+    /* Creamy white text for readability on the dark background */
+    color: #F7F3E3;
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+/* Input Fields (Email and Password) */
+input[type="text"],
+input[type="password"] {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #C69A73; /* Caramel border */
+    border-radius: 6px;
+    /* Light background for the input field */
+    background-color: #F7F3E3;
+    color: #4F382E; /* Dark text for readability */
+    box-sizing: border-box;
+    font-size: 1em;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus {
+    outline: none;
+    /* Highlight the focus with a richer coffee color */
+    border-color: #6F4E37;
+    box-shadow: 0 0 5px rgba(100, 70, 50, 0.5); /* Subtle glow */
+}
+
+/* Submit Button */
+button[type="submit"] {
+    width: 100%;
+    padding: 14px;
+    /* Use the warm caramel color for the main action button */
+    background-color: #C69A73;
+    /* Dark text for strong contrast */
+    color: #4F382E;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    transition: background-color 0.3s ease, transform 0.1s;
+}
+
+button[type="submit"]:hover {
+    /* Darken the button slightly on hover to a richer mocha */
+    background-color: #6F4E37;
+    color: #F7F3E3; /* Light text on dark hover */
+}
+
+button[type="submit"]:active {
+    /* Add a slight press effect */
+    transform: translateY(1px);
+}

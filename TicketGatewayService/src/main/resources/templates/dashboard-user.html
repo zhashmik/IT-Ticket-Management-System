@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>User Dashboard</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+<h2>User Dashboard</h2>
+<p id="welcomeUser">Welcome, User!</p>
+<hr>
+
+<!-- Dashboard Options -->
+<div id="dashboardOptions">
+    <button id="showCreateForm">Create New Ticket</button>
+    <button id="showViewTickets">View My Tickets</button>
+    <button id="logoutBtn">Logout</button>
+</div>
+
+<hr>
+
+<!-- Create Ticket Form -->
+<div id="createTicketDiv" style="display:none;">
+    <h3>Create New Ticket</h3>
+    <form id="createTicketForm">
+        <label>Title:</label>
+        <input type="text" name="title" required /><br/><br/>
+
+        <label>Description:</label>
+        <textarea name="description" required></textarea><br/><br/>
+
+        <label>Priority:</label>
+        <select name="priority">
+            <option>LOW</option>
+            <option>MEDIUM</option>
+            <option>HIGH</option>
+        </select><br/><br/>
+
+        <label>Category:</label>
+        <input type="text" name="category" required /><br/><br/>
+        
+         <label>Attachment (optional):</label>
+         <input type="file" name="attachment" /><br/><br/>
+
+        <button type="submit">Create Ticket</button>
+        <button type="button" id="backFromCreate">Back</button>
+    </form>
+</div>
+
+<!-- View Tickets Table -->
+<div id="viewTicketsDiv" style="display:none;">
+    <h3>My Tickets</h3>
+    <table border="1" id="ticketsTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Priority</th>
+                <th>Category</th>
+                <th>Created Date</th>
+                <th>Attachment</th>
+                <th>History</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+    <button id="backFromView">Back</button>
+</div>
+
+<script th:inline="javascript">
+    /*<![CDATA[*/
+    const loggedInUserEmail = /*[[${userEmail}]]*/ 'unknown';
+    /*]]>*/
+</script>
+<script>
+$(document).ready(function() {
+
+    $("#welcomeUser").text("Hello, " + loggedInUserEmail + "!");
+
+    // Logout
+    $("#logoutBtn").click(function(){
+        window.location.href = "/logout";
+    });
+
+    // Show Create Form
+    $("#showCreateForm").click(function() {
+        $("#dashboardOptions").hide();
+        $("#createTicketDiv").show();
+    });
+
+    // View My Tickets
+    $("#showViewTickets").click(function() {
+        $("#dashboardOptions").hide();
+        $("#viewTicketsDiv").show();
+        loadTickets();
+    });
+
+    function loadTickets() {
+        $.ajax({
+            url: "http://localhost:8080/tickets/my",
+            type: "GET",
+            success: function(data) {
+                let tbody = $("#ticketsTable tbody");
+                tbody.empty();
+
+                if (!data || data.length === 0) {
+                    tbody.append(`<tr><td colspan="8" style="text-align:center;">No tickets found</td></tr>`);
+                    return;
+                }
+
+                data.forEach(ticket => {
+ //                   let attachmentLink = ticket.fileAttachmentPath
+//                        ? `<a href="http://localhost:8080/files/${ticket.fileAttachmentPath.split('/').pop()}" target="_blank" >Download</a>`
+//                       : 'No File';
+                      let attachmentLink = ticket.fileAttachmentPath
+                          ? ticket.fileAttachmentPath
+                         : 'No File';
+
+                    tbody.append(`<tr>
+                        <td>${ticket.id}</td>
+                        <td>${ticket.title}</td>
+                        <td>${ticket.status}</td>
+                        <td>${ticket.priority}</td>
+                        <td>${ticket.category}</td>
+                        <td>${new Date(ticket.creationDate).toLocaleString()}</td>
+                        <td>${attachmentLink}</td>
+                        <td><button class="viewHistoryBtn" data-id="${ticket.id}">View History</button></td>
+                    </tr>`);
+                });
+            },
+            error: function() {
+                alert("Error loading your tickets.");
+            }
+        });
+    }
+
+    // ✅ Create Ticket (with file upload)
+    $("#createTicketForm").submit(function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+
+        $.ajax({
+            url: "http://localhost:8080/tickets/upload",
+            type: "POST",
+            processData: false,
+            contentType: false,
+            data: formData,
+            success: function(response) {
+                alert("Ticket created successfully! Ticket ID: " + response.id);
+                $("#createTicketForm")[0].reset();
+                $("#createTicketDiv").hide();
+                $("#dashboardOptions").show();
+            },
+            error: function() {
+                alert("Error creating ticket. Please try again.");
+            }
+        });
+    });
+
+    // ✅ View Ticket History
+    $(document).on("click", ".viewHistoryBtn", function() {
+        const ticketId = $(this).data("id");
+        $.ajax({
+            url: "http://localhost:8080/ticket-history/" + ticketId,
+            type: "GET",
+            success: function(history) {
+                if (!history || history.length === 0) {
+                    alert("No history found for this ticket.");
+                    return;
+                }
+
+                let historyHtml = `<h3>Ticket History (ID: ${ticketId})</h3>
+                    <table border="1" style="width:100%; text-align:left;">
+                    <thead><tr>
+                        <th>Action</th><th>Old Status</th><th>New Status</th><th>Date</th><th>Updated By</th>
+                    </tr></thead><tbody>`;
+
+                history.forEach(h => {
+                    historyHtml += `<tr>
+                        <td>${h.action || ''}</td>
+                        <td>${h.oldStatus || ''}</td>
+                        <td>${h.newStatus || ''}</td>
+                        <td>${new Date(h.actionDate).toLocaleString()}</td>
+                        <td>${h.updatedBy ? h.updatedBy.email : ''}</td>
+                    </tr>`;
+                });
+
+                historyHtml += `</tbody></table><br><button id="closeHistory">Close</button>`;
+
+                $("body").append(`<div id="historyModal" style="position:fixed; top:10%; left:10%; background:#fff; border:1px solid #ccc; padding:20px; width:80%; height:70%; overflow:auto; z-index:9999;">${historyHtml}</div>`);
+            },
+            error: function() {
+                alert("Error loading history.");
+            }
+        });
+    });
+
+    // ✅ Close History Modal
+    $(document).on("click", "#closeHistory", function() {
+        $("#historyModal").remove();
+    });
+
+    // Back buttons
+    $("#backFromCreate, #backFromView").click(function() {
+        $("#createTicketDiv, #viewTicketsDiv").hide();
+        $("#dashboardOptions").show();
+    });
+
+});
+</script>
+</body>
+</html>
